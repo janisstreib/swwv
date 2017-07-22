@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"flag"
+	"github.com/Sirupsen/logrus"
 	"golang.org/x/net/html"
 	"io"
 	"mime"
@@ -10,11 +11,42 @@ import (
 	"strings"
 )
 
+var mainLog = logrus.WithField("module", "main")
+
+type LogLevelFlag struct {
+    // flag.Value
+    lvl logrus.Level
+}
+
+func (f LogLevelFlag) String() string {
+    return f.lvl.String()
+}
+func (f LogLevelFlag) Set(val string) error {
+    l, err := logrus.ParseLevel(val)
+    if err != nil {
+        f.lvl = l
+    }
+    return err
+}
+
+
 func main() {
+	var (
+		logLevel     LogLevelFlag = LogLevelFlag{logrus.DebugLevel}
+		listenString string
+	)
+
+	flag.Var(&logLevel, "log.level", "possible values: debug, info, warning, error, fatal, panic")
+	flag.StringVar(&listenString, "listen", ":8080", "net.Listen() string, e.g. addr:port")
+
+	flag.Parse()
+	logrus.SetLevel(logLevel.lvl)
+
 	server := http.Server{
-		Addr:    ":8000",
+		Addr:    listenString,
 		Handler: &myHandler{},
 	}
+    mainLog.Info("Startup")
 	server.ListenAndServe()
 }
 
@@ -34,23 +66,21 @@ func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{}
 	if !strings.HasPrefix(reqUrl, "http") {
 		if ref := r.Header.Get("Referer"); ref != "" {
-            // FIXME: Security: diable cookie caching 
-            fmt.Println(ref)
+			// FIXME: Security: diable cookie caching
+            mainLog.Debug("Referer: ", ref)
 			refUrl, err := url.Parse(ref)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			fmt.Print("Raw path ")
-			fmt.Println(refUrl.Path)
-			refUrl, err = url.Parse(refUrl.Path[1:])
+			mainLog.Debug("Referer URL: ", refUrl.Path)
+            refUrl, err = url.Parse(refUrl.Path[1:])
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			fmt.Print("Patching url by ref to ")
 			reqUrl = normalizeUrl(refUrl, "/"+reqUrl)[1:]
-			fmt.Println(reqUrl)
+			mainLog.Debug("Patching url by ref to ", reqUrl)
 		}
 	}
 	req, err := http.NewRequest(r.Method, reqUrl, nil)
@@ -70,10 +100,9 @@ func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 	switch ct {
 	case "text/html":
-		fmt.Println("html")
 		root, err := html.Parse(resp.Body)
 		if err != nil {
-			fmt.Println(err)
+			mainLog.Error(err)
 			return
 		}
 		var f func(*html.Node)
