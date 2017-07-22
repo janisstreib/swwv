@@ -14,21 +14,20 @@ import (
 var mainLog = logrus.WithField("module", "main")
 
 type LogLevelFlag struct {
-    // flag.Value
-    lvl logrus.Level
+	// flag.Value
+	lvl logrus.Level
 }
 
 func (f LogLevelFlag) String() string {
-    return f.lvl.String()
+	return f.lvl.String()
 }
 func (f LogLevelFlag) Set(val string) error {
-    l, err := logrus.ParseLevel(val)
-    if err != nil {
-        f.lvl = l
-    }
-    return err
+	l, err := logrus.ParseLevel(val)
+	if err != nil {
+		f.lvl = l
+	}
+	return err
 }
-
 
 func main() {
 	var (
@@ -46,7 +45,7 @@ func main() {
 		Addr:    listenString,
 		Handler: &myHandler{},
 	}
-    mainLog.Info("Startup")
+	mainLog.Info("Startup")
 	server.ListenAndServe()
 }
 
@@ -67,14 +66,14 @@ func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(reqUrl, "http") {
 		if ref := r.Header.Get("Referer"); ref != "" {
 			// FIXME: Security: diable cookie caching
-            mainLog.Debug("Referer: ", ref)
+			mainLog.Debug("Referer: ", ref)
 			refUrl, err := url.Parse(ref)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			mainLog.Debug("Referer URL: ", refUrl.Path)
-            refUrl, err = url.Parse(refUrl.Path[1:])
+			refUrl, err = url.Parse(refUrl.Path[1:])
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -86,6 +85,7 @@ func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	req, err := http.NewRequest(r.Method, reqUrl, nil)
 	if err != nil {
 		// FIXME
+		mainLog.Error("Error creating http-client request object! ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -93,16 +93,22 @@ func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, err := client.Do(req)
 	if err != nil {
 		// FIXME
+		mainLog.Error("Error while doing http-client request! ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
 	ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	if err != nil {
+		mainLog.Error("Error parsing mime-type! ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	switch ct {
 	case "text/html":
 		root, err := html.Parse(resp.Body)
 		if err != nil {
-			mainLog.Error(err)
+			mainLog.Error("Error pasring the html! ", err)
 			return
 		}
 		var f func(*html.Node)
