@@ -104,17 +104,18 @@ func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", req.Header.Get("Content-Type"))
 	switch ct {
 	case "text/html":
 		root, err := html.Parse(resp.Body)
 		if err != nil {
-			mainLog.Error("Error pasring the html! ", err)
+			mainLog.Error("Error parsing the html! ", err)
 			return
 		}
 		var f func(*html.Node)
 		f = func(node *html.Node) {
 			if node.Type == html.ElementNode {
-				if node.Data == "form" || node.Data == "script" || node.Data == "link" || node.Data == "a" || node.Data == "img" {
+				if node.Data == "form" || node.Data == "script" || node.Data == "link" || node.Data == "a" || node.Data == "img" || node.Data == "iframe" {
 					for i, attr := range node.Attr {
 						if attr.Key == "href" || attr.Key == "src" || attr.Key == "action" {
 							if strings.HasPrefix(attr.Val, "//") {
@@ -135,7 +136,6 @@ func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		f(root)
 		html.Render(w, root)
 	default:
-		w.Header().Set("Content-Type", req.Header.Get("Content-Type"))
 		io.Copy(w, resp.Body)
 	}
 }
