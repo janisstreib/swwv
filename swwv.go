@@ -115,7 +115,7 @@ func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var f func(*html.Node)
 		f = func(node *html.Node) {
 			if node.Type == html.ElementNode {
-				if node.Data == "form" || node.Data == "script" || node.Data == "link" || node.Data == "a" || node.Data == "img" || node.Data == "iframe" {
+                if node.Data == "form" || node.Data == "script" || node.Data == "link" || node.Data == "a" || node.Data == "img" || node.Data == "iframe" || node.Data == "video" || node.Data == "audio" {
 					for i, attr := range node.Attr {
 						if attr.Key == "href" || attr.Key == "src" || attr.Key == "action" {
 							if strings.HasPrefix(attr.Val, "//") {
