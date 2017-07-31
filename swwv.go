@@ -115,6 +115,10 @@ func (*myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var f func(*html.Node)
 		f = func(node *html.Node) {
 			if node.Type == html.ElementNode {
+                if node.Data == "title" {
+                    mainLog.Debug("Title data: ", node.FirstChild.Data)
+                    node.FirstChild.Data = "[WEB-VPN] " + node.FirstChild.Data
+                }
                 if node.Data == "form" || node.Data == "script" || node.Data == "link" || node.Data == "a" || node.Data == "img" || node.Data == "iframe" || node.Data == "video" || node.Data == "audio" {
 					for i, attr := range node.Attr {
 						if attr.Key == "href" || attr.Key == "src" || attr.Key == "action" {
